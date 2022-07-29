@@ -21,15 +21,10 @@ import java.io.IOException;
 
 import org.apache.commons.lang.LocaleUtils;
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.*;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.DirectoryScanner;
-import org.codehaus.plexus.util.cli.CommandLineException;
-import org.codehaus.plexus.util.cli.CommandLineUtils;
-import org.codehaus.plexus.util.cli.Commandline;
-import org.codehaus.plexus.util.cli.StreamConsumer;
+import org.codehaus.plexus.util.cli.*;
 
 /**
  * Generates ressource bundles.
@@ -38,6 +33,13 @@ import org.codehaus.plexus.util.cli.StreamConsumer;
  */
 @Mojo(name = "dist", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
 public class DistMojo extends AbstractGettextMojo {
+
+    private static File tmpDir;
+
+    public DistMojo() {
+        tmpDir = new File(System.getProperty("java.io.tmpdir"), "gettext-maven-plugin");
+        tmpDir.mkdirs();
+    }
 
     /**
      * The msgcat command.
@@ -85,8 +87,8 @@ public class DistMojo extends AbstractGettextMojo {
     protected boolean asSource;
 
     public void execute() throws MojoExecutionException {
+        final FileMover fileMover = new FileMover(getLog(), tmpDir, targetBundle, outputDirectory);
 
-        // create output directory if it doesn't exists
         outputDirectory.mkdirs();
 
         CommandlineFactory cf;
@@ -96,12 +98,12 @@ public class DistMojo extends AbstractGettextMojo {
             cf = new MsgCatCommandlineFactory();
         } else {
             throw new MojoExecutionException("Unknown output format: "
-                    + outputFormat + ". Should be 'class' or 'properties'.");
+                + outputFormat + ". Should be 'class' or 'properties'.");
         }
 
         DirectoryScanner ds = new DirectoryScanner();
         ds.setBasedir(poDirectory);
-        ds.setIncludes(new String[]{"**/*.po"});
+        ds.setIncludes(new String[] { "**/*.po" });
         ds.scan();
 
         String[] files = ds.getIncludedFiles();
@@ -117,8 +119,9 @@ public class DistMojo extends AbstractGettextMojo {
             }
 
             Commandline cl = cf.createCommandline(inputFile);
+
             this.addExtraArguments(cl);
-            getLog().debug("Executing: " + cl.toString());
+            getLog().debug("Executing: " + cl);
             StreamConsumer out = new LoggerStreamConsumer(getLog(), LoggerStreamConsumer.INFO);
             StreamConsumer err = new LoggerStreamConsumer(getLog(), LoggerStreamConsumer.WARN);
             try {
@@ -126,6 +129,16 @@ public class DistMojo extends AbstractGettextMojo {
             } catch (CommandLineException e) {
                 getLog().error("Could not execute " + cl.getExecutable() + ".", e);
             }
+
+            if (asSource) {
+                try {
+                    fileMover.moveTmpFileToOutputDirectory(outputFile);
+                } catch (IOException e) {
+                    throw new MojoExecutionException(
+                        "Unable to move files to outputDirectory: " + outputDirectory, e);
+                }
+            }
+
         }
 
         String basepath = targetBundle.replace('.', File.separatorChar);
@@ -155,6 +168,7 @@ public class DistMojo extends AbstractGettextMojo {
     }
 
     private interface CommandlineFactory {
+
         Commandline createCommandline(File file);
 
         /**
@@ -164,6 +178,7 @@ public class DistMojo extends AbstractGettextMojo {
     }
 
     private class MsgFmtCommandlineFactory implements CommandlineFactory {
+
         public File getOutputFile(File input) {
             String locale = getLocale(input);
             return new File(outputDirectory, targetBundle.replace('.', File.separatorChar) + "_" + locale + ".class");
@@ -184,15 +199,18 @@ public class DistMojo extends AbstractGettextMojo {
                 cl.createArg().setValue("--java");
             }
 
-            cl.createArg().setValue("-d");
-            cl.createArg().setFile(outputDirectory);
+            if (asSource) {
+                cl.createArg().setValue("--source");
+                cl.createArg().setValue("-d");
+                cl.createArg().setFile(tmpDir);
+            } else {
+                cl.createArg().setValue("-d");
+                cl.createArg().setFile(outputDirectory);
+            }
             cl.createArg().setValue("-r");
             cl.createArg().setValue(targetBundle);
             cl.createArg().setValue("-l");
             cl.createArg().setValue(getLocale(file));
-            if (asSource) {
-                cl.createArg().setValue("--source");
-            }
             cl.createArg().setFile(file);
             getLog().warn(cl.toString());
             return cl;
@@ -200,6 +218,7 @@ public class DistMojo extends AbstractGettextMojo {
     }
 
     private class MsgCatCommandlineFactory implements CommandlineFactory {
+
         public File getOutputFile(File input) {
             String basepath = targetBundle.replace('.', File.separatorChar);
             String locale = input.getName().substring(0, input.getName().lastIndexOf('.'));
