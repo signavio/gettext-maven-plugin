@@ -65,23 +65,23 @@
 				<repository>
 						<id>central</id>
 						<name>signavio-releases</name>
-						<url>https://signavio.jfrog.io/artifactory/plugins-release-local</url>
+						<url>https://common.repositories.cloud.sap/artifactory/signavio-plugins-release-local</url>
 				</repository>
 				<snapshotRepository>
 						<id>snapshots</id>
 						<name>signavio-snapshots</name>
-						<url>https://signavio.jfrog.io/artifactory/plugins-snapshot-local</url>
+						<url>https://common.repositories.cloud.sap/artifactory/signavio-plugins-snapshot-local</url>
 				</snapshotRepository>
 		</distributionManagement>
 
   <repositories>
     <repository>
       <id>signavio-releases</id>
-      <url>https://signavio.jfrog.io/signavio/libs-release</url>
+      <url>https://common.repositories.cloud.sap/artifactory/signavio-libs-release</url>
     </repository>
     <repository>
       <id>signavio-snapshots</id>
-      <url>https://signavio.jfrog.io/signavio/libs-snapshot</url>
+      <url>https://common.repositories.cloud.sap/artifactory/signavio-libs-snapshot</url>
     </repository>
     <repository>
       <id>jcenter</id>
@@ -91,7 +91,7 @@
   <pluginRepositories>
     <pluginRepository>
       <id>signavio-plugins-releases</id>
-      <url>https://signavio.jfrog.io/signavio/plugins-release</url>
+      <url>https://common.repositories.cloud.sap/artifactory/signavio-plugins-release</url>
     </pluginRepository>
     <pluginRepository>
       <id>jcenter</id>
